@@ -12,13 +12,14 @@ const newImageBtn = document.getElementById('newImageBtn');
 let currentImageBlob = null;
 let bodyPixModel = null;
 
-// BodyPixモデルのロード（高精度設定）
+// BodyPixモデルのロード（バランス型設定）
 async function loadModel() {
     if (!bodyPixModel) {
         bodyPixModel = await bodyPix.load({
-            architecture: 'ResNet50', // より高精度なモデル
-            outputStride: 16, // 細かいセグメンテーション
-            quantBytes: 4 // 高精度な量子化
+            architecture: 'MobileNetV1',
+            outputStride: 16,
+            multiplier: 1.0, // 最高精度
+            quantBytes: 4
         });
     }
     return bodyPixModel;
@@ -88,13 +89,13 @@ async function processImage(file) {
             img.src = imageData;
         });
 
-        // セグメンテーションを実行（高精度設定）
+        // セグメンテーションを実行（最適化設定）
         const segmentation = await bodyPixModel.segmentPerson(img, {
             flipHorizontal: false,
-            internalResolution: 'high', // 高解像度で処理
-            segmentationThreshold: 0.5, // より細かく検出
+            internalResolution: 'medium',
+            segmentationThreshold: 0.6,
             maxDetections: 1,
-            scoreThreshold: 0.5,
+            scoreThreshold: 0.4,
             nmsRadius: 20
         });
 
@@ -122,7 +123,7 @@ function loadImage(file) {
     });
 }
 
-// 背景を削除（エッジスムージング付き）
+// 背景を削除（改善版）
 async function removeBackground(img, segmentation) {
     const canvas = resultCanvas;
     canvas.width = img.width;
@@ -138,24 +139,19 @@ async function removeBackground(img, segmentation) {
 
     // セグメンテーションマスクを取得
     const maskData = segmentation.data;
-    const width = segmentation.width;
-    const height = segmentation.height;
+    const maskWidth = segmentation.width;
+    const maskHeight = segmentation.height;
 
-    // マスクをスムージング（3x3ガウシアンブラー）
-    const smoothedMask = smoothMask(maskData, width, height);
+    // マスクを画像サイズにリサイズ
+    const resizedMask = resizeMask(maskData, maskWidth, maskHeight, canvas.width, canvas.height);
 
-    // マスクを適用（グラデーション対応）
-    for (let i = 0; i < smoothedMask.length; i++) {
-        const y = Math.floor(i / width);
-        const x = i % width;
+    // エッジスムージングを適用
+    const smoothedMask = smoothMask(resizedMask, canvas.width, canvas.height);
 
-        // 元画像の対応するピクセル位置を計算
-        const imgX = Math.floor((x / width) * canvas.width);
-        const imgY = Math.floor((y / height) * canvas.height);
-        const pixelIndex = (imgY * canvas.width + imgX) * 4;
-
-        // スムージングされたマスク値でアルファチャンネルを設定
-        pixels[pixelIndex + 3] = Math.round(smoothedMask[i] * 255);
+    // マスクを適用
+    for (let i = 0; i < pixels.length / 4; i++) {
+        const alpha = smoothedMask[i];
+        pixels[i * 4 + 3] = Math.round(alpha * 255);
     }
 
     // 更新した画像データをcanvasに戻す
@@ -167,25 +163,47 @@ async function removeBackground(img, segmentation) {
     }, 'image/png');
 }
 
-// マスクをスムージングする関数
+// マスクを画像サイズにリサイズ
+function resizeMask(mask, srcWidth, srcHeight, dstWidth, dstHeight) {
+    const resized = new Float32Array(dstWidth * dstHeight);
+
+    for (let y = 0; y < dstHeight; y++) {
+        for (let x = 0; x < dstWidth; x++) {
+            // 対応する元のマスク座標を計算
+            const srcX = Math.floor((x / dstWidth) * srcWidth);
+            const srcY = Math.floor((y / dstHeight) * srcHeight);
+            const srcIdx = srcY * srcWidth + srcX;
+
+            resized[y * dstWidth + x] = mask[srcIdx];
+        }
+    }
+
+    return resized;
+}
+
+// マスクをスムージング（エッジを滑らかに）
 function smoothMask(mask, width, height) {
     const smoothed = new Float32Array(mask.length);
+
+    // 5x5ガウシアンカーネル（より強力なスムージング）
     const kernel = [
-        [1/16, 2/16, 1/16],
-        [2/16, 4/16, 2/16],
-        [1/16, 2/16, 1/16]
+        [1/273, 4/273, 7/273, 4/273, 1/273],
+        [4/273, 16/273, 26/273, 16/273, 4/273],
+        [7/273, 26/273, 41/273, 26/273, 7/273],
+        [4/273, 16/273, 26/273, 16/273, 4/273],
+        [1/273, 4/273, 7/273, 4/273, 1/273]
     ];
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             let sum = 0;
 
-            for (let ky = -1; ky <= 1; ky++) {
-                for (let kx = -1; kx <= 1; kx++) {
+            for (let ky = -2; ky <= 2; ky++) {
+                for (let kx = -2; kx <= 2; kx++) {
                     const ny = Math.min(Math.max(y + ky, 0), height - 1);
                     const nx = Math.min(Math.max(x + kx, 0), width - 1);
                     const idx = ny * width + nx;
-                    sum += mask[idx] * kernel[ky + 1][kx + 1];
+                    sum += mask[idx] * kernel[ky + 2][kx + 2];
                 }
             }
 
