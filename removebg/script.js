@@ -12,14 +12,13 @@ const newImageBtn = document.getElementById('newImageBtn');
 let currentImageBlob = null;
 let bodyPixModel = null;
 
-// BodyPixモデルのロード
+// BodyPixモデルのロード（高精度設定）
 async function loadModel() {
     if (!bodyPixModel) {
         bodyPixModel = await bodyPix.load({
-            architecture: 'MobileNetV1',
-            outputStride: 16,
-            multiplier: 0.75,
-            quantBytes: 2
+            architecture: 'ResNet50', // より高精度なモデル
+            outputStride: 16, // 細かいセグメンテーション
+            quantBytes: 4 // 高精度な量子化
         });
     }
     return bodyPixModel;
@@ -89,11 +88,14 @@ async function processImage(file) {
             img.src = imageData;
         });
 
-        // セグメンテーションを実行
+        // セグメンテーションを実行（高精度設定）
         const segmentation = await bodyPixModel.segmentPerson(img, {
             flipHorizontal: false,
-            internalResolution: 'medium',
-            segmentationThreshold: 0.7
+            internalResolution: 'high', // 高解像度で処理
+            segmentationThreshold: 0.5, // より細かく検出
+            maxDetections: 1,
+            scoreThreshold: 0.5,
+            nmsRadius: 20
         });
 
         // 背景を削除した画像を生成
@@ -120,7 +122,7 @@ function loadImage(file) {
     });
 }
 
-// 背景を削除
+// 背景を削除（エッジスムージング付き）
 async function removeBackground(img, segmentation) {
     const canvas = resultCanvas;
     canvas.width = img.width;
@@ -134,14 +136,26 @@ async function removeBackground(img, segmentation) {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
 
-    // セグメンテーションマスクを適用
+    // セグメンテーションマスクを取得
     const maskData = segmentation.data;
+    const width = segmentation.width;
+    const height = segmentation.height;
 
-    for (let i = 0; i < maskData.length; i++) {
-        // maskDataが0の場合（背景）、透明にする
-        if (maskData[i] === 0) {
-            pixels[i * 4 + 3] = 0; // アルファチャンネルを0に
-        }
+    // マスクをスムージング（3x3ガウシアンブラー）
+    const smoothedMask = smoothMask(maskData, width, height);
+
+    // マスクを適用（グラデーション対応）
+    for (let i = 0; i < smoothedMask.length; i++) {
+        const y = Math.floor(i / width);
+        const x = i % width;
+
+        // 元画像の対応するピクセル位置を計算
+        const imgX = Math.floor((x / width) * canvas.width);
+        const imgY = Math.floor((y / height) * canvas.height);
+        const pixelIndex = (imgY * canvas.width + imgX) * 4;
+
+        // スムージングされたマスク値でアルファチャンネルを設定
+        pixels[pixelIndex + 3] = Math.round(smoothedMask[i] * 255);
     }
 
     // 更新した画像データをcanvasに戻す
@@ -151,6 +165,35 @@ async function removeBackground(img, segmentation) {
     canvas.toBlob((blob) => {
         currentImageBlob = blob;
     }, 'image/png');
+}
+
+// マスクをスムージングする関数
+function smoothMask(mask, width, height) {
+    const smoothed = new Float32Array(mask.length);
+    const kernel = [
+        [1/16, 2/16, 1/16],
+        [2/16, 4/16, 2/16],
+        [1/16, 2/16, 1/16]
+    ];
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            let sum = 0;
+
+            for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                    const ny = Math.min(Math.max(y + ky, 0), height - 1);
+                    const nx = Math.min(Math.max(x + kx, 0), width - 1);
+                    const idx = ny * width + nx;
+                    sum += mask[idx] * kernel[ky + 1][kx + 1];
+                }
+            }
+
+            smoothed[y * width + x] = sum;
+        }
+    }
+
+    return smoothed;
 }
 
 // ダウンロード
