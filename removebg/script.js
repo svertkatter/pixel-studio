@@ -128,7 +128,7 @@ function loadImage(file) {
     });
 }
 
-// 背景を削除
+// 背景を削除（エッジスムージング付き）
 function removeBackground(img, results) {
     const canvas = resultCanvas;
     canvas.width = img.width;
@@ -141,20 +141,24 @@ function removeBackground(img, results) {
     tempCanvas.height = img.height;
     const tempCtx = tempCanvas.getContext('2d');
 
-    // セグメンテーションマスクを描画
+    // セグメンテーションマスクを描画（ぼかし効果を適用）
+    tempCtx.filter = 'blur(2px)'; // ガウシアンブラーでエッジを滑らかに
     tempCtx.drawImage(results.segmentationMask, 0, 0, img.width, img.height);
+    tempCtx.filter = 'none'; // フィルタをリセット
+
     const maskImageData = tempCtx.getImageData(0, 0, img.width, img.height);
+
+    // マスクをさらにスムージング
+    const smoothedMask = smoothMaskData(maskImageData.data, img.width, img.height);
 
     // 元画像を描画
     ctx.drawImage(img, 0, 0);
     const imageData = ctx.getImageData(0, 0, img.width, img.height);
     const pixels = imageData.data;
 
-    // マスクを適用（アルファチャンネルを設定）
+    // スムージングされたマスクを適用
     for (let i = 0; i < pixels.length / 4; i++) {
-        // MediaPipeのマスクは0-255の値（255が人物、0が背景）
-        const maskValue = maskImageData.data[i * 4];
-        pixels[i * 4 + 3] = maskValue; // アルファチャンネルに設定
+        pixels[i * 4 + 3] = smoothedMask[i];
     }
 
     // 更新した画像データをcanvasに戻す
@@ -164,6 +168,38 @@ function removeBackground(img, results) {
     canvas.toBlob((blob) => {
         currentImageBlob = blob;
     }, 'image/png');
+}
+
+// マスクデータをスムージング
+function smoothMaskData(maskData, width, height) {
+    const smoothed = new Uint8ClampedArray(width * height);
+
+    // 3x3ガウシアンカーネル
+    const kernel = [
+        [1/16, 2/16, 1/16],
+        [2/16, 4/16, 2/16],
+        [1/16, 2/16, 1/16]
+    ];
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            let sum = 0;
+
+            // カーネルを適用
+            for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                    const ny = Math.min(Math.max(y + ky, 0), height - 1);
+                    const nx = Math.min(Math.max(x + kx, 0), width - 1);
+                    const idx = (ny * width + nx) * 4;
+                    sum += maskData[idx] * kernel[ky + 1][kx + 1];
+                }
+            }
+
+            smoothed[y * width + x] = Math.round(sum);
+        }
+    }
+
+    return smoothed;
 }
 
 // ダウンロード
