@@ -16,12 +16,13 @@ let removeBackground = null;
 
 async function loadBackgroundRemovalLibrary() {
     try {
-        const module = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm');
+        // unpkg CDNを使用して読み込む
+        const module = await import('https://unpkg.com/@imgly/background-removal@1.4.5/dist/index.mjs');
         removeBackground = module.removeBackground;
         return true;
     } catch (error) {
         console.error('Failed to load background removal library:', error);
-        alert('背景削除ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
+        alert('背景削除ライブラリの読み込みに失敗しました。ページを再読み込みしてください。\nエラー: ' + error.message);
         return false;
     }
 }
