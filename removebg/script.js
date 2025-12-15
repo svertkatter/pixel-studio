@@ -215,7 +215,7 @@ async function removeBackgroundAI(file, img) {
 
     // @imgly/background-removalで処理
     const blob = await model(file, {
-        publicPath: 'https://esm.sh/@imgly/background-removal@1.4.5/dist/',
+        publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/',
         model: 'medium', // small, medium, large
         output: {
             format: 'image/png',
