@@ -16,9 +16,15 @@ let removeBackground = null;
 async function loadAIModel() {
     if (!removeBackground) {
         try {
-            // esm.sh経由でロード（依存関係を自動解決）
-            const module = await import('https://esm.sh/@imgly/background-removal@1.4.5');
+            // unpkg経由でロード
+            const module = await import('https://unpkg.com/@imgly/background-removal@1.4.5/dist/browser.mjs');
             removeBackground = module.removeBackground;
+
+            // Configを設定
+            if (module.Config) {
+                module.Config.publicPath = 'https://unpkg.com/@imgly/background-removal@1.4.5/dist/';
+            }
+
             console.log('AI model loaded successfully');
         } catch (error) {
             console.error('Failed to load AI model:', error);
@@ -212,10 +218,6 @@ async function removeBackgroundColorBased(img) {
 // AIベースの背景削除（@imgly/background-removal）
 async function removeBackgroundAI(file, img) {
     const model = await loadAIModel();
-
-    // Configを設定
-    const { Config } = await import('https://esm.sh/@imgly/background-removal@1.4.5');
-    Config.publicPath = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/';
 
     // @imgly/background-removalで処理
     const blob = await model(file);
