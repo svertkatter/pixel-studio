@@ -80,10 +80,10 @@
                 <div class="info-card">
                     <h3>✨ 特徴</h3>
                     <ul>
+                        <li><strong>最高精度AI</strong> - @imgly/background-removalで業界最高水準</li>
                         <li><strong>自動判定</strong> - 画像を分析して最適な手法を自動選択</li>
-                        <li><strong>ハイブリッド処理</strong> - 図形は色ベース、人物はAI処理</li>
+                        <li><strong>ハイブリッド処理</strong> - 図形は色ベース、人物は最高精度AI</li>
                         <li><strong>完全プライバシー保護</strong> - ブラウザ内で処理、画像は外部に送信されません</li>
-                        <li><strong>滑らかなエッジ</strong> - 多段階スムージングで自然な仕上がり</li>
                     </ul>
                 </div>
 
@@ -91,8 +91,8 @@
                     <h3>⚠️ 注意事項</h3>
                     <ul>
                         <li>単色背景の図形：色ベースで高速処理</li>
-                        <li>複雑な背景の人物：AI（MediaPipe）で高精度処理</li>
-                        <li>初回のAI処理時のみモデルダウンロード（約3MB）</li>
+                        <li>複雑な背景の人物：最高精度AIで処理</li>
+                        <li>初回のAI処理時のみモデルダウンロード（約30MB）</li>
                     </ul>
                 </div>
             </div>
@@ -104,9 +104,6 @@
         </footer>
     </div>
 
-    <!-- MediaPipe Selfie Segmentation（人物検出用）-->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
-
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>

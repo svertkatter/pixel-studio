@@ -10,22 +10,22 @@ const downloadBtn = document.getElementById('downloadBtn');
 const newImageBtn = document.getElementById('newImageBtn');
 
 let currentImageBlob = null;
-let selfieSegmentation = null;
+let removeBackground = null;
 
-// MediaPipe Selfie Segmentationの初期化
-function initializeAIModel() {
-    if (!selfieSegmentation) {
-        selfieSegmentation = new SelfieSegmentation({
-            locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
-            }
-        });
-
-        selfieSegmentation.setOptions({
-            modelSelection: 1, // ランドスケープモデル（高精度）
-        });
+// @imgly/background-removalを動的にロード
+async function loadAIModel() {
+    if (!removeBackground) {
+        try {
+            // esm.sh経由でロード（依存関係を自動解決）
+            const module = await import('https://esm.sh/@imgly/background-removal@1.4.5');
+            removeBackground = module.removeBackground;
+            console.log('AI model loaded successfully');
+        } catch (error) {
+            console.error('Failed to load AI model:', error);
+            throw new Error('AIモデルの読み込みに失敗しました');
+        }
     }
-    return selfieSegmentation;
+    return removeBackground;
 }
 
 // ファイルアップロードのイベントリスナー
@@ -65,8 +65,6 @@ uploadBox.addEventListener('drop', (e) => {
 // 画像の複雑さを分析
 function analyzeImageComplexity(imageData, width, height) {
     const data = imageData.data;
-
-    // 背景（画像の端）の色の分散を計算
     const bgSamples = [];
     const positions = [
         [0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1],
@@ -83,14 +81,12 @@ function analyzeImageComplexity(imageData, width, height) {
         });
     }
 
-    // 色の平均を計算
     const avgColor = {
         r: bgSamples.reduce((sum, c) => sum + c.r, 0) / bgSamples.length,
         g: bgSamples.reduce((sum, c) => sum + c.g, 0) / bgSamples.length,
         b: bgSamples.reduce((sum, c) => sum + c.b, 0) / bgSamples.length
     };
 
-    // 分散を計算
     const variance = bgSamples.reduce((sum, c) => {
         return sum +
             Math.pow(c.r - avgColor.r, 2) +
@@ -98,8 +94,6 @@ function analyzeImageComplexity(imageData, width, height) {
             Math.pow(c.b - avgColor.b, 2);
     }, 0) / bgSamples.length;
 
-    // 分散が小さい（< 500）= 単色背景（図形など）
-    // 分散が大きい（>= 500）= 複雑な背景（人物写真など）
     return {
         isSimpleBackground: variance < 500,
         variance: variance
@@ -146,8 +140,8 @@ async function processImage(file) {
             console.log('Using color-based removal (simple background)');
             await removeBackgroundColorBased(img);
         } else {
-            console.log('Using AI-based removal (complex background)');
-            await removeBackgroundAI(img);
+            console.log('Using AI-based removal (complex background - @imgly)');
+            await removeBackgroundAI(file, img);
         }
 
         processingSection.style.display = 'none';
@@ -215,66 +209,34 @@ async function removeBackgroundColorBased(img) {
     }, 'image/png');
 }
 
-// AIベースの背景削除（人物用）
-async function removeBackgroundAI(img) {
-    const model = initializeAIModel();
+// AIベースの背景削除（@imgly/background-removal）
+async function removeBackgroundAI(file, img) {
+    const model = await loadAIModel();
 
-    await new Promise((resolve, reject) => {
-        model.onResults((results) => {
-            try {
-                const canvas = resultCanvas;
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-
-                // 一時キャンバスでマスクを処理
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = img.width;
-                tempCanvas.height = img.height;
-                const tempCtx = tempCanvas.getContext('2d');
-
-                // マスクにぼかしを適用
-                tempCtx.filter = 'blur(3px)';
-                tempCtx.drawImage(results.segmentationMask, 0, 0, img.width, img.height);
-                tempCtx.filter = 'none';
-
-                const maskImageData = tempCtx.getImageData(0, 0, img.width, img.height);
-
-                // マスクをスムージング
-                const rawMask = new Uint8ClampedArray(img.width * img.height);
-                for (let i = 0; i < rawMask.length; i++) {
-                    rawMask[i] = maskImageData.data[i * 4];
-                }
-
-                let smoothedMask = rawMask;
-                for (let pass = 0; pass < 2; pass++) {
-                    smoothedMask = smoothMaskAdvanced(smoothedMask, img.width, img.height);
-                }
-
-                // 元画像を描画
-                ctx.drawImage(img, 0, 0);
-                const imageData = ctx.getImageData(0, 0, img.width, img.height);
-                const pixels = imageData.data;
-
-                // スムージングされたマスクを適用
-                for (let i = 0; i < pixels.length / 4; i++) {
-                    pixels[i * 4 + 3] = smoothedMask[i];
-                }
-
-                ctx.putImageData(imageData, 0, 0);
-
-                canvas.toBlob((blob) => {
-                    currentImageBlob = blob;
-                }, 'image/png');
-
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
-        });
-
-        model.send({ image: img });
+    // @imgly/background-removalで処理
+    const blob = await model(file, {
+        publicPath: 'https://esm.sh/@imgly/background-removal@1.4.5/dist/',
+        model: 'medium', // small, medium, large
+        output: {
+            format: 'image/png',
+            quality: 0.9
+        }
     });
+
+    // 結果をCanvasに描画
+    const resultImg = new Image();
+    await new Promise((resolve) => {
+        resultImg.onload = resolve;
+        resultImg.src = URL.createObjectURL(blob);
+    });
+
+    const canvas = resultCanvas;
+    canvas.width = resultImg.width;
+    canvas.height = resultImg.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(resultImg, 0, 0);
+
+    currentImageBlob = blob;
 }
 
 function detectBackgroundColor(imageData, width, height) {
