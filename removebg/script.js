@@ -11,20 +11,14 @@ const newImageBtn = document.getElementById('newImageBtn');
 
 let currentImageBlob = null;
 
-// @imgly/background-removal をCDNから動的に読み込む
-let removeBackground = null;
-
-async function loadBackgroundRemovalLibrary() {
-    try {
-        // unpkg CDNを使用して読み込む
-        const module = await import('https://unpkg.com/@imgly/background-removal@1.4.5/dist/index.mjs');
-        removeBackground = module.removeBackground;
-        return true;
-    } catch (error) {
-        console.error('Failed to load background removal library:', error);
-        alert('背景削除ライブラリの読み込みに失敗しました。ページを再読み込みしてください。\nエラー: ' + error.message);
+// ライブラリの読み込み確認
+function checkLibraryLoaded() {
+    if (typeof imglyRemoveBackground === 'undefined') {
+        console.error('Background removal library not loaded');
+        alert('背景削除ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
         return false;
     }
+    return true;
 }
 
 // ファイルアップロードのイベントリスナー
@@ -75,13 +69,10 @@ async function processImage(file) {
     resultSection.style.display = 'none';
 
     try {
-        // ライブラリが未ロードの場合は読み込む
-        if (!removeBackground) {
-            const loaded = await loadBackgroundRemovalLibrary();
-            if (!loaded) {
-                resetToUpload();
-                return;
-            }
+        // ライブラリの読み込み確認
+        if (!checkLibraryLoaded()) {
+            resetToUpload();
+            return;
         }
 
         // 元画像の表示
@@ -91,13 +82,9 @@ async function processImage(file) {
         };
         reader.readAsDataURL(file);
 
-        // 背景削除処理
-        const imageBlob = await removeBackground(file, {
-            model: 'medium', // small, medium, large から選択
-            output: {
-                format: 'image/png',
-                quality: 0.8
-            }
+        // 背景削除処理（グローバル変数として読み込まれた関数を使用）
+        const imageBlob = await imglyRemoveBackground.removeBackground(file, {
+            publicPath: 'https://unpkg.com/@imgly/background-removal@1.4.5/dist/resources/'
         });
 
         currentImageBlob = imageBlob;
