@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="画像から背景を自動で削除するツール - Pixel Studio">
+    <title>背景削除 - Pixel Studio</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">
+                <a href="../index.html" style="text-decoration: none; color: inherit;">🎨 Pixel Studio</a>
+            </h1>
+            <p class="tagline">背景削除ツール</p>
+        </header>
+
+        <main class="tool-container">
+            <div class="tool-panel">
+                <div class="upload-section" id="uploadSection">
+                    <div class="upload-box" id="uploadBox">
+                        <div class="upload-icon">📸</div>
+                        <h2>画像をアップロード</h2>
+                        <p>クリックまたはドラッグ&ドロップで画像を選択</p>
+                        <p class="file-types">対応形式: PNG, JPEG, WebP</p>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="processing-section" id="processingSection" style="display: none;">
+                    <div class="loader-container">
+                        <div class="loader"></div>
+                        <p class="loading-text">背景を削除中...</p>
+                        <p class="loading-subtext">初回読み込み時はモデルのダウンロードに時間がかかる場合があります</p>
+                    </div>
+                </div>
+
+                <div class="result-section" id="resultSection" style="display: none;">
+                    <div class="image-comparison">
+                        <div class="image-container">
+                            <h3>元の画像</h3>
+                            <div class="image-wrapper">
+                                <img id="originalImage" alt="元の画像">
+                            </div>
+                        </div>
+                        <div class="arrow">→</div>
+                        <div class="image-container">
+                            <h3>背景削除後</h3>
+                            <div class="image-wrapper checkered-bg">
+                                <canvas id="resultCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="btn btn-primary" id="downloadBtn">
+                            <span>💾</span>
+                            PNG形式でダウンロード
+                        </button>
+                        <button class="btn btn-secondary" id="newImageBtn">
+                            <span>🔄</span>
+                            別の画像を処理
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <div class="info-card">
+                    <h3>💡 使い方</h3>
+                    <ol>
+                        <li>画像をアップロード</li>
+                        <li>自動で背景が削除されます</li>
+                        <li>結果をダウンロード</li>
+                    </ol>
+                </div>
+
+                <div class="info-card">
+                    <h3>✨ 特徴</h3>
+                    <ul>
+                        <li><strong>AI自動処理</strong> - 機械学習で高精度に背景を削除</li>
+                        <li><strong>完全オフライン</strong> - ブラウザ内で処理、画像は外部に送信されません</li>
+                        <li><strong>透明PNG出力</strong> - 透明な背景のPNG画像を生成</li>
+                    </ul>
+                </div>
+
+                <div class="info-card">
+                    <h3>⚠️ 注意事項</h3>
+                    <ul>
+                        <li>初回利用時はAIモデルのダウンロードが必要です（約30MB）</li>
+                        <li>大きな画像は処理に時間がかかる場合があります</li>
+                        <li>人物や物体が中心の画像で最良の結果が得られます</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p><a href="../index.html" style="color: inherit; text-decoration: none;">← トップページに戻る</a></p>
+            <p>&copy; 2024 Pixel Studio. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
