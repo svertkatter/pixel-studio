@@ -80,18 +80,19 @@
                 <div class="info-card">
                     <h3>✨ 特徴</h3>
                     <ul>
-                        <li><strong>AI自動処理</strong> - 機械学習で高精度に背景を削除</li>
-                        <li><strong>完全オフライン</strong> - ブラウザ内で処理、画像は外部に送信されません</li>
+                        <li><strong>Google MediaPipe</strong> - 最新AIで高精度に背景を削除</li>
+                        <li><strong>完全プライバシー保護</strong> - ブラウザ内で処理、画像は外部に送信されません</li>
                         <li><strong>透明PNG出力</strong> - 透明な背景のPNG画像を生成</li>
+                        <li><strong>高速処理</strong> - 軽量モデルで素早く処理</li>
                     </ul>
                 </div>
 
                 <div class="info-card">
                     <h3>⚠️ 注意事項</h3>
                     <ul>
-                        <li>初回利用時はAIモデルのダウンロードが必要です（約5MB）</li>
-                        <li>処理には数秒かかります（画像サイズにより変動）</li>
+                        <li>初回利用時はAIモデルのダウンロードが必要です（約3MB）</li>
                         <li>人物が写った画像で最良の結果が得られます</li>
+                        <li>処理は数秒で完了します</li>
                     </ul>
                 </div>
             </div>
@@ -103,9 +104,10 @@
         </footer>
     </div>
 
-    <!-- TensorFlow.js と BodyPix ライブラリを読み込む -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0"></script>
+    <!-- MediaPipe Selfie Segmentation（高精度・高速）-->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
 
     <script src="script.js"></script>
 </body>
