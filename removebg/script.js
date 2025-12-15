@@ -10,15 +10,19 @@ const downloadBtn = document.getElementById('downloadBtn');
 const newImageBtn = document.getElementById('newImageBtn');
 
 let currentImageBlob = null;
+let bodyPixModel = null;
 
-// ライブラリの読み込み確認
-function checkLibraryLoaded() {
-    if (typeof imglyRemoveBackground === 'undefined') {
-        console.error('Background removal library not loaded');
-        alert('背景削除ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
-        return false;
+// BodyPixモデルのロード
+async function loadModel() {
+    if (!bodyPixModel) {
+        bodyPixModel = await bodyPix.load({
+            architecture: 'MobileNetV1',
+            outputStride: 16,
+            multiplier: 0.75,
+            quantBytes: 2
+        });
     }
-    return true;
+    return bodyPixModel;
 }
 
 // ファイルアップロードのイベントリスナー
@@ -69,39 +73,35 @@ async function processImage(file) {
     resultSection.style.display = 'none';
 
     try {
-        // ライブラリの読み込み確認
-        if (!checkLibraryLoaded()) {
-            resetToUpload();
-            return;
-        }
+        // モデルのロード
+        await loadModel();
+
+        // 画像を読み込む
+        const imageData = await loadImage(file);
 
         // 元画像の表示
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            originalImage.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+        originalImage.src = imageData;
 
-        // 背景削除処理（グローバル変数として読み込まれた関数を使用）
-        const imageBlob = await imglyRemoveBackground.removeBackground(file, {
-            publicPath: 'https://unpkg.com/@imgly/background-removal@1.4.5/dist/resources/'
+        // 画像要素を作成
+        const img = new Image();
+        await new Promise((resolve) => {
+            img.onload = resolve;
+            img.src = imageData;
         });
 
-        currentImageBlob = imageBlob;
+        // セグメンテーションを実行
+        const segmentation = await bodyPixModel.segmentPerson(img, {
+            flipHorizontal: false,
+            internalResolution: 'medium',
+            segmentationThreshold: 0.7
+        });
 
-        // 結果をCanvasに描画
-        const img = new Image();
-        img.onload = () => {
-            resultCanvas.width = img.width;
-            resultCanvas.height = img.height;
-            const ctx = resultCanvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
+        // 背景を削除した画像を生成
+        await removeBackground(img, segmentation);
 
-            // 結果画面を表示
-            processingSection.style.display = 'none';
-            resultSection.style.display = 'block';
-        };
-        img.src = URL.createObjectURL(imageBlob);
+        // 結果画面を表示
+        processingSection.style.display = 'none';
+        resultSection.style.display = 'block';
 
     } catch (error) {
         console.error('Background removal failed:', error);
@@ -110,11 +110,63 @@ async function processImage(file) {
     }
 }
 
+// 画像ファイルを読み込む
+function loadImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// 背景を削除
+async function removeBackground(img, segmentation) {
+    const canvas = resultCanvas;
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+
+    // 元画像を描画
+    ctx.drawImage(img, 0, 0);
+
+    // 画像データを取得
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+
+    // セグメンテーションマスクを適用
+    const maskData = segmentation.data;
+
+    for (let i = 0; i < maskData.length; i++) {
+        // maskDataが0の場合（背景）、透明にする
+        if (maskData[i] === 0) {
+            pixels[i * 4 + 3] = 0; // アルファチャンネルを0に
+        }
+    }
+
+    // 更新した画像データをcanvasに戻す
+    ctx.putImageData(imageData, 0, 0);
+
+    // Blobに変換
+    canvas.toBlob((blob) => {
+        currentImageBlob = blob;
+    }, 'image/png');
+}
+
 // ダウンロード
 downloadBtn.addEventListener('click', () => {
-    if (!currentImageBlob) return;
+    if (!currentImageBlob) {
+        // Blobがまだない場合はCanvasから直接ダウンロード
+        resultCanvas.toBlob((blob) => {
+            downloadBlob(blob);
+        }, 'image/png');
+    } else {
+        downloadBlob(currentImageBlob);
+    }
+});
 
-    const url = URL.createObjectURL(currentImageBlob);
+function downloadBlob(blob) {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'removed-background-' + Date.now() + '.png';
@@ -122,7 +174,7 @@ downloadBtn.addEventListener('click', () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-});
+}
 
 // 新しい画像を処理
 newImageBtn.addEventListener('click', () => {
