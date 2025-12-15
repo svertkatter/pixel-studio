@@ -213,15 +213,12 @@ async function removeBackgroundColorBased(img) {
 async function removeBackgroundAI(file, img) {
     const model = await loadAIModel();
 
+    // Configを設定
+    const { Config } = await import('https://esm.sh/@imgly/background-removal@1.4.5');
+    Config.publicPath = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/';
+
     // @imgly/background-removalで処理
-    const blob = await model(file, {
-        publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/',
-        model: 'medium', // small, medium, large
-        output: {
-            format: 'image/png',
-            quality: 0.9
-        }
-    });
+    const blob = await model(file);
 
     // 結果をCanvasに描画
     const resultImg = new Image();
