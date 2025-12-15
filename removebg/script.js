@@ -10,23 +10,6 @@ const downloadBtn = document.getElementById('downloadBtn');
 const newImageBtn = document.getElementById('newImageBtn');
 
 let currentImageBlob = null;
-let selfieSegmentation = null;
-
-// MediaPipe Selfie Segmentationの初期化
-function initializeModel() {
-    if (!selfieSegmentation) {
-        selfieSegmentation = new SelfieSegmentation({
-            locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
-            }
-        });
-
-        selfieSegmentation.setOptions({
-            modelSelection: 1, // 0: 一般モデル, 1: ランドスケープモデル（高精度）
-        });
-    }
-    return selfieSegmentation;
-}
 
 // ファイルアップロードのイベントリスナー
 uploadBox.addEventListener('click', () => {
@@ -76,9 +59,6 @@ async function processImage(file) {
     resultSection.style.display = 'none';
 
     try {
-        // モデルの初期化
-        const model = initializeModel();
-
         // 画像を読み込む
         const imageData = await loadImage(file);
 
@@ -92,20 +72,8 @@ async function processImage(file) {
             img.src = imageData;
         });
 
-        // セグメンテーション結果を受け取るコールバック
-        await new Promise((resolve, reject) => {
-            model.onResults((results) => {
-                try {
-                    removeBackground(img, results);
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            });
-
-            // セグメンテーション実行
-            model.send({ image: img });
-        });
+        // 背景を削除
+        await removeBackground(img);
 
         // 結果画面を表示
         processingSection.style.display = 'none';
@@ -128,33 +96,90 @@ function loadImage(file) {
     });
 }
 
-// 背景を削除（エッジスムージング付き）
-function removeBackground(img, results) {
+// 背景色を検出（四隅の色から推測）
+function detectBackgroundColor(imageData, width, height) {
+    const data = imageData.data;
+    const samples = [];
+
+    // 四隅と各辺の中央からサンプリング
+    const positions = [
+        [0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1], // 四隅
+        [Math.floor(width / 2), 0], [Math.floor(width / 2), height - 1], // 上下中央
+        [0, Math.floor(height / 2)], [width - 1, Math.floor(height / 2)] // 左右中央
+    ];
+
+    for (const [x, y] of positions) {
+        const idx = (y * width + x) * 4;
+        samples.push({
+            r: data[idx],
+            g: data[idx + 1],
+            b: data[idx + 2]
+        });
+    }
+
+    // 最も多い色を背景色とする（簡易的に平均を使用）
+    const avgColor = {
+        r: Math.round(samples.reduce((sum, c) => sum + c.r, 0) / samples.length),
+        g: Math.round(samples.reduce((sum, c) => sum + c.g, 0) / samples.length),
+        b: Math.round(samples.reduce((sum, c) => sum + c.b, 0) / samples.length)
+    };
+
+    return avgColor;
+}
+
+// 色の距離を計算
+function colorDistance(c1, c2) {
+    return Math.sqrt(
+        Math.pow(c1.r - c2.r, 2) +
+        Math.pow(c1.g - c2.g, 2) +
+        Math.pow(c1.b - c2.b, 2)
+    );
+}
+
+// 背景を削除（色ベース + エッジスムージング）
+async function removeBackground(img) {
     const canvas = resultCanvas;
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
 
-    // 一時キャンバスでセグメンテーションマスクを処理
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = img.width;
-    tempCanvas.height = img.height;
-    const tempCtx = tempCanvas.getContext('2d');
-
-    // セグメンテーションマスクを描画（ぼかし効果を適用）
-    tempCtx.filter = 'blur(2px)'; // ガウシアンブラーでエッジを滑らかに
-    tempCtx.drawImage(results.segmentationMask, 0, 0, img.width, img.height);
-    tempCtx.filter = 'none'; // フィルタをリセット
-
-    const maskImageData = tempCtx.getImageData(0, 0, img.width, img.height);
-
-    // マスクをさらにスムージング
-    const smoothedMask = smoothMaskData(maskImageData.data, img.width, img.height);
-
     // 元画像を描画
     ctx.drawImage(img, 0, 0);
-    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
+
+    // 背景色を検出
+    const bgColor = detectBackgroundColor(imageData, canvas.width, canvas.height);
+
+    // 閾値（色の許容範囲）
+    const threshold = 40; // 調整可能
+
+    // アルファマスクを作成
+    const alphaMask = new Uint8ClampedArray(canvas.width * canvas.height);
+
+    for (let i = 0; i < pixels.length / 4; i++) {
+        const r = pixels[i * 4];
+        const g = pixels[i * 4 + 1];
+        const b = pixels[i * 4 + 2];
+
+        const color = { r, g, b };
+        const distance = colorDistance(color, bgColor);
+
+        // 距離に基づいてアルファ値を計算（グラデーション効果）
+        if (distance < threshold) {
+            // 背景に近い色は透明に（グラデーション）
+            alphaMask[i] = Math.round(255 * (distance / threshold));
+        } else {
+            // 十分離れた色は不透明
+            alphaMask[i] = 255;
+        }
+    }
+
+    // マスクを多段階スムージング
+    let smoothedMask = alphaMask;
+    for (let pass = 0; pass < 3; pass++) {
+        smoothedMask = smoothMaskAdvanced(smoothedMask, canvas.width, canvas.height);
+    }
 
     // スムージングされたマスクを適用
     for (let i = 0; i < pixels.length / 4; i++) {
@@ -170,15 +195,17 @@ function removeBackground(img, results) {
     }, 'image/png');
 }
 
-// マスクデータをスムージング
-function smoothMaskData(maskData, width, height) {
+// 高度なマスクスムージング（5x5ガウシアンカーネル）
+function smoothMaskAdvanced(maskData, width, height) {
     const smoothed = new Uint8ClampedArray(width * height);
 
-    // 3x3ガウシアンカーネル
+    // 5x5ガウシアンカーネル（より強力）
     const kernel = [
-        [1/16, 2/16, 1/16],
-        [2/16, 4/16, 2/16],
-        [1/16, 2/16, 1/16]
+        [1/273, 4/273, 7/273, 4/273, 1/273],
+        [4/273, 16/273, 26/273, 16/273, 4/273],
+        [7/273, 26/273, 41/273, 26/273, 7/273],
+        [4/273, 16/273, 26/273, 16/273, 4/273],
+        [1/273, 4/273, 7/273, 4/273, 1/273]
     ];
 
     for (let y = 0; y < height; y++) {
@@ -186,12 +213,12 @@ function smoothMaskData(maskData, width, height) {
             let sum = 0;
 
             // カーネルを適用
-            for (let ky = -1; ky <= 1; ky++) {
-                for (let kx = -1; kx <= 1; kx++) {
+            for (let ky = -2; ky <= 2; ky++) {
+                for (let kx = -2; kx <= 2; kx++) {
                     const ny = Math.min(Math.max(y + ky, 0), height - 1);
                     const nx = Math.min(Math.max(x + kx, 0), width - 1);
-                    const idx = (ny * width + nx) * 4;
-                    sum += maskData[idx] * kernel[ky + 1][kx + 1];
+                    const idx = ny * width + nx;
+                    sum += maskData[idx] * kernel[ky + 2][kx + 2];
                 }
             }
 
