@@ -20,9 +20,10 @@ async function loadAIModel() {
             const module = await import('https://unpkg.com/@imgly/background-removal@1.4.5/dist/browser.mjs');
             removeBackground = module.removeBackground;
 
-            // Configを設定
+            // 公式ドキュメントに従ってConfigを設定
             if (module.Config) {
-                module.Config.publicPath = 'https://unpkg.com/@imgly/background-removal@1.4.5/dist/';
+                // 空文字列でデフォルトのパスを使用
+                module.Config.publicPath = '';
             }
 
             console.log('AI model loaded successfully');
