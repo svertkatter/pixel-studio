@@ -11,6 +11,9 @@ export default defineNuxtConfig({
       title: 'Pixel Studio - 画像処理ツール',
       meta: [
         { name: 'description', content: '画像の圧縮、背景削除、ファイル形式変換が簡単にできる無料オンラインツール' }
+      ],
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/pixel-studio/favicon.svg' }
       ]
     }
   },
