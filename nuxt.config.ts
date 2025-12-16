@@ -4,6 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   app: {
+    baseURL: process.env.NODE_ENV === 'production' ? '/pixel-studio/' : '/',
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
@@ -14,5 +15,10 @@ export default defineNuxtConfig({
     }
   },
 
-  css: ['~/assets/css/main.css']
+  css: ['~/assets/css/main.css'],
+
+  // GitHub Pages用の設定
+  nitro: {
+    preset: 'static'
+  }
 })
