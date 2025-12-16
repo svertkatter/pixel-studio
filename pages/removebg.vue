@@ -219,6 +219,12 @@ async function processImage(file) {
     return
   }
 
+  // サポートされていない形式をチェック
+  if (file.type === 'image/avif') {
+    alert('AVIF形式は現在サポートされていません。PNG、JPEG、WebP形式の画像をご使用ください。')
+    return
+  }
+
   currentSection.value = 'processing'
 
   try {
@@ -245,6 +251,12 @@ async function processImage(file) {
 
     console.log('Image analysis:', analysis)
 
+    // 結果セクションに切り替えてからcanvasを使用
+    currentSection.value = 'result'
+
+    // DOMが更新されるのを待つ
+    await new Promise(resolve => setTimeout(resolve, 100))
+
     // 背景の複雑さに応じて処理方法を選択
     if (analysis.isSimpleBackground) {
       console.log('Using color-based removal (simple background)')
@@ -253,8 +265,6 @@ async function processImage(file) {
       console.log('Using AI-based removal (complex background - @imgly)')
       await removeBackgroundAI(file, img)
     }
-
-    currentSection.value = 'result'
 
   } catch (error) {
     console.error('Background removal failed:', error)
@@ -275,6 +285,9 @@ function loadImage(file) {
 // 色ベースの背景削除（図形用）
 async function removeBackgroundColorBased(img) {
   const canvas = resultCanvas.value
+  if (!canvas) {
+    throw new Error('Canvas要素が見つかりません')
+  }
   canvas.width = img.width
   canvas.height = img.height
   const ctx = canvas.getContext('2d')
@@ -333,6 +346,9 @@ async function removeBackgroundAI(file, img) {
   })
 
   const canvas = resultCanvas.value
+  if (!canvas) {
+    throw new Error('Canvas要素が見つかりません')
+  }
   canvas.width = resultImg.width
   canvas.height = resultImg.height
   const ctx = canvas.getContext('2d')
