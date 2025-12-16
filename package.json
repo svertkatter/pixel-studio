@@ -7,7 +7,8 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "generate:icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
@@ -15,6 +16,7 @@
     "vue": "latest"
   },
   "devDependencies": {
-    "@nuxt/devtools": "^1.5.2"
+    "@nuxt/devtools": "^1.5.2",
+    "sharp": "^0.34.5"
   }
 }
