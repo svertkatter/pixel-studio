@@ -20,5 +20,12 @@ export default defineNuxtConfig({
   // GitHub Pages用の設定
   nitro: {
     preset: 'static'
+  },
+
+  // クライアントサイドでのみ使用するパッケージ
+  vite: {
+    optimizeDeps: {
+      exclude: ['@imgly/background-removal']
+    }
   }
 })

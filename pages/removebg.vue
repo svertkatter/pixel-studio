@@ -129,17 +129,22 @@ const originalImageUrl = ref('')
 const currentImageBlob = ref(null)
 let removeBackground = null
 
-// @imgly/background-removalをロード
+// @imgly/background-removalをロード（クライアントサイドのみ）
 async function loadAIModel() {
-  if (!removeBackground) {
+  if (!removeBackground && process.client) {
     try {
       const module = await import('@imgly/background-removal')
       removeBackground = module.removeBackground
 
+      // モデルの公開パスを設定
+      if (module.Config) {
+        module.Config.publicPath = '/pixel-studio/_nuxt/'
+      }
+
       console.log('AI model loaded successfully')
     } catch (error) {
       console.error('Failed to load AI model:', error)
-      throw new Error('AIモデルの読み込みに失敗しました')
+      throw new Error('AIモデルの読み込みに失敗しました: ' + error.message)
     }
   }
   return removeBackground
