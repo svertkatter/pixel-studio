@@ -207,7 +207,7 @@ function analyzeImageComplexity(imageData, width, height) {
   }, 0) / bgSamples.length
 
   return {
-    isSimpleBackground: variance < 500,
+    isSimpleBackground: variance < 100, // 閾値を下げてAIを使用する頻度を上げる
     variance: variance
   }
 }
@@ -297,7 +297,7 @@ async function removeBackgroundColorBased(img) {
   const pixels = imageData.data
 
   const bgColor = detectBackgroundColor(imageData, canvas.width, canvas.height)
-  const threshold = 40
+  const threshold = 30 // より厳密な閾値で精度向上
   const alphaMask = new Uint8ClampedArray(canvas.width * canvas.height)
 
   for (let i = 0; i < pixels.length / 4; i++) {
@@ -314,11 +314,14 @@ async function removeBackgroundColorBased(img) {
     }
   }
 
-  // 多段階スムージング
+  // 多段階スムージング（パス数を増やして精度向上）
   let smoothedMask = alphaMask
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 5; pass++) {
     smoothedMask = smoothMaskAdvanced(smoothedMask, canvas.width, canvas.height)
   }
+
+  // エッジフェザリングで自然な境界を作成
+  smoothedMask = applyFeathering(smoothedMask, canvas.width, canvas.height)
 
   for (let i = 0; i < pixels.length / 4; i++) {
     pixels[i * 4 + 3] = smoothedMask[i]
@@ -420,6 +423,41 @@ function smoothMaskAdvanced(maskData, width, height) {
   }
 
   return smoothed
+}
+
+// エッジフェザリング（境界を自然にぼかす）
+function applyFeathering(maskData, width, height) {
+  const feathered = new Uint8ClampedArray(width * height)
+  const featherRadius = 3 // フェザリングの半径
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x
+      const alpha = maskData[idx]
+
+      // エッジ付近（半透明領域）のみフェザリングを適用
+      if (alpha > 0 && alpha < 255) {
+        let sum = 0
+        let count = 0
+
+        // 周囲のピクセルの平均を取る
+        for (let fy = -featherRadius; fy <= featherRadius; fy++) {
+          for (let fx = -featherRadius; fx <= featherRadius; fx++) {
+            const ny = Math.min(Math.max(y + fy, 0), height - 1)
+            const nx = Math.min(Math.max(x + fx, 0), width - 1)
+            sum += maskData[ny * width + nx]
+            count++
+          }
+        }
+
+        feathered[idx] = Math.round(sum / count)
+      } else {
+        feathered[idx] = alpha
+      }
+    }
+  }
+
+  return feathered
 }
 
 // ダウンロード
