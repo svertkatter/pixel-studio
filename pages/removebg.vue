@@ -129,16 +129,12 @@ const originalImageUrl = ref('')
 const currentImageBlob = ref(null)
 let removeBackground = null
 
-// @imgly/background-removalを動的にロード
+// @imgly/background-removalをロード
 async function loadAIModel() {
   if (!removeBackground) {
     try {
-      const module = await import('https://unpkg.com/@imgly/background-removal@1.4.5/dist/browser.mjs')
+      const module = await import('@imgly/background-removal')
       removeBackground = module.removeBackground
-
-      if (module.Config) {
-        module.Config.publicPath = ''
-      }
 
       console.log('AI model loaded successfully')
     } catch (error) {
