@@ -9,6 +9,7 @@ const publicDir = join(__dirname, '..', 'public')
 
 // SVGファイルを読み込む
 const svgBuffer = readFileSync(join(publicDir, 'favicon.svg'))
+const ogImageBuffer = readFileSync(join(publicDir, 'og-image.svg'))
 
 // 生成するアイコンのサイズと名前を定義
 const icons = [
@@ -69,4 +70,22 @@ for (const icon of maskableIcons) {
   console.log(`✓ Generated ${icon.name} (${icon.size}x${icon.size}, maskable)`)
 }
 
-console.log('\n✨ All icons generated successfully!')
+// OGP画像を生成（1200x630）
+console.log('\n📱 Generating social media images...\n')
+
+await sharp(ogImageBuffer)
+  .resize(1200, 630)
+  .png()
+  .toFile(join(publicDir, 'og-image.png'))
+
+console.log('✓ Generated og-image.png (1200x630, for social media)')
+
+// Twitter用の小さいバージョンも生成
+await sharp(ogImageBuffer)
+  .resize(800, 420)
+  .png()
+  .toFile(join(publicDir, 'twitter-image.png'))
+
+console.log('✓ Generated twitter-image.png (800x420, for Twitter)')
+
+console.log('\n✨ All icons and social images generated successfully!')

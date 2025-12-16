@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+
+  <!-- Decorative grid pattern -->
+  <g opacity="0.05">
+    <line x1="0" y1="100" x2="1200" y2="100" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="200" x2="1200" y2="200" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="300" x2="1200" y2="300" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="400" x2="1200" y2="400" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="500" x2="1200" y2="500" stroke="#fff" stroke-width="1"/>
+    <line x1="200" y1="0" x2="200" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="400" y1="0" x2="400" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="600" y1="0" x2="600" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="800" y1="0" x2="800" y2="630" stroke="#fff" stroke-width="1"/>
+    <line x1="1000" y1="0" x2="1000" y2="630" stroke="#fff" stroke-width="1"/>
+  </g>
+
+  <!-- Large pixel icon on left -->
+  <g transform="translate(150, 150)">
+    <rect width="300" height="300" rx="40" fill="url(#iconGrad)"/>
+    <!-- Pixel grid pattern -->
+    <rect x="60" y="60" width="60" height="60" fill="#fff" opacity="0.9"/>
+    <rect x="130" y="60" width="60" height="60" fill="#fff" opacity="0.7"/>
+    <rect x="200" y="60" width="60" height="60" fill="#fff" opacity="0.5"/>
+    <rect x="60" y="130" width="60" height="60" fill="#fff" opacity="0.7"/>
+    <rect x="130" y="130" width="60" height="60" fill="#22d3ee" opacity="1"/>
+    <rect x="200" y="130" width="60" height="60" fill="#fff" opacity="0.7"/>
+    <rect x="60" y="200" width="60" height="60" fill="#fff" opacity="0.5"/>
+    <rect x="130" y="200" width="60" height="60" fill="#fff" opacity="0.7"/>
+    <rect x="200" y="200" width="60" height="60" fill="#fff" opacity="0.9"/>
+  </g>
+
+  <!-- Text content on right -->
+  <g transform="translate(550, 0)">
+    <!-- Main title with gradient -->
+    <text x="0" y="220" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="url(#iconGrad)">
+      Pixel Studio
+    </text>
+
+    <!-- Subtitle -->
+    <text x="0" y="290" font-family="Arial, sans-serif" font-size="36" fill="#f1f5f9">
+      画像処理ツール
+    </text>
+
+    <!-- Features -->
+    <g transform="translate(0, 340)">
+      <text x="0" y="0" font-family="Arial, sans-serif" font-size="28" fill="#94a3b8">
+        ✓ 画像圧縮
+      </text>
+      <text x="0" y="50" font-family="Arial, sans-serif" font-size="28" fill="#94a3b8">
+        ✓ 背景削除
+      </text>
+      <text x="0" y="100" font-family="Arial, sans-serif" font-size="28" fill="#94a3b8">
+        ✓ 形式変換
+      </text>
+    </g>
+  </g>
+
+  <!-- Accent line -->
+  <rect x="550" y="180" width="8" height="200" fill="#22d3ee" rx="4"/>
+</svg>

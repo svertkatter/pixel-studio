@@ -22,7 +22,23 @@ export default defineNuxtConfig({
         { name: 'application-name', content: 'Pixel Studio' },
         // Windows用
         { name: 'msapplication-TileColor', content: '#6366f1' },
-        { name: 'msapplication-config', content: '/pixel-studio/browserconfig.xml' }
+        { name: 'msapplication-config', content: '/pixel-studio/browserconfig.xml' },
+        // Open Graph / Facebook
+        { property: 'og:type', content: 'website' },
+        { property: 'og:site_name', content: 'Pixel Studio' },
+        { property: 'og:title', content: 'Pixel Studio - 画像処理ツール' },
+        { property: 'og:description', content: '画像の圧縮、背景削除、ファイル形式変換が簡単にできる無料オンラインツール。ブラウザ上で完結、プライバシー重視。' },
+        { property: 'og:image', content: 'https://svertkatter.github.io/pixel-studio/og-image.png' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:url', content: 'https://svertkatter.github.io/pixel-studio/' },
+        { property: 'og:locale', content: 'ja_JP' },
+        // Twitter Card
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'Pixel Studio - 画像処理ツール' },
+        { name: 'twitter:description', content: '画像の圧縮、背景削除、ファイル形式変換が簡単にできる無料オンラインツール' },
+        { name: 'twitter:image', content: 'https://svertkatter.github.io/pixel-studio/twitter-image.png' },
+        { name: 'twitter:image:alt', content: 'Pixel Studio - 画像処理ツール' }
       ],
       link: [
         // 標準ファビコン
