@@ -33,6 +33,78 @@
           </div>
         </div>
 
+        <!-- 形式選択セクション -->
+        <div v-if="currentSection === 'selection'" class="selection-section">
+          <div class="selection-content">
+            <h2>変換設定</h2>
+
+            <div class="original-preview">
+              <h3>アップロードされた画像</h3>
+              <div class="image-wrapper">
+                <img :src="originalImageUrl" alt="元の画像">
+              </div>
+              <div class="file-info">
+                <p>形式: {{ originalFormat.toUpperCase() }}</p>
+                <p>サイズ: {{ formatFileSize(originalSize) }}</p>
+              </div>
+            </div>
+
+            <div class="format-selection">
+              <div class="setting-group">
+                <label>
+                  <strong>変換先の形式を選択:</strong>
+                  <select v-model="outputFormat">
+                    <optgroup label="一般的な形式">
+                      <option value="jpeg">JPEG - 写真向け、高圧縮</option>
+                      <option value="png">PNG - 透明度対応、可逆圧縮</option>
+                      <option value="webp">WebP - 次世代形式、高効率</option>
+                      <option value="avif">AVIF - 最新形式、超高効率</option>
+                    </optgroup>
+                    <optgroup label="その他">
+                      <option value="gif">GIF - アニメーション対応</option>
+                      <option value="bmp">BMP - 非圧縮形式</option>
+                      <option value="ico">ICO - アイコン形式</option>
+                    </optgroup>
+                  </select>
+                </label>
+              </div>
+
+              <div v-if="showQualitySlider" class="setting-group">
+                <label>
+                  <strong>品質: {{ quality }}%</strong>
+                  <input
+                    v-model.number="quality"
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="5"
+                  >
+                </label>
+                <p class="setting-hint">※ JPEG、WebP、AVIFで有効</p>
+              </div>
+
+              <div v-if="outputFormat === 'png'" class="setting-group">
+                <label>
+                  <input type="checkbox" v-model="preserveTransparency">
+                  透明度を保持
+                </label>
+                <p class="setting-hint">※ 元画像に透明度がある場合のみ有効</p>
+              </div>
+            </div>
+
+            <div class="controls">
+              <button class="btn btn-primary" @click="startConversion">
+                <span>🔄</span>
+                変換する
+              </button>
+              <button class="btn btn-secondary" @click="resetToUpload">
+                <span>←</span>
+                戻る
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- 処理中セクション -->
         <div v-if="currentSection === 'processing'" class="processing-section">
           <div class="loader-container">
@@ -138,6 +210,7 @@
             <li>画像をアップロード</li>
             <li>変換したい形式を選択</li>
             <li>品質を調整（必要に応じて）</li>
+            <li>「変換する」ボタンをクリック</li>
             <li>変換された画像をダウンロード</li>
           </ol>
         </div>
@@ -281,7 +354,6 @@ async function processImage(file) {
     return
   }
 
-  currentSection.value = 'processing'
   originalSize.value = file.size
   originalFormat.value = detectImageFormat(file)
 
@@ -298,15 +370,27 @@ async function processImage(file) {
 
     originalImage = img
 
-    // 初期変換を実行
-    await convertImage()
-
-    currentSection.value = 'result'
+    // 形式選択セクションへ移動
+    currentSection.value = 'selection'
 
   } catch (error) {
-    console.error('Image conversion failed:', error)
-    alert('画像変換に失敗しました。別の画像で試してください。\nエラー: ' + error.message)
+    console.error('Image loading failed:', error)
+    alert('画像の読み込みに失敗しました。別の画像で試してください。\nエラー: ' + error.message)
     resetToUpload()
+  }
+}
+
+// 変換を開始
+async function startConversion() {
+  currentSection.value = 'processing'
+
+  try {
+    await convertImage()
+    currentSection.value = 'result'
+  } catch (error) {
+    console.error('Image conversion failed:', error)
+    alert('画像変換に失敗しました。別の形式で試してください。\nエラー: ' + error.message)
+    currentSection.value = 'selection'
   }
 }
 
@@ -509,6 +593,37 @@ function resetToUpload() {
 .file-types {
   font-size: 0.875rem;
   opacity: 0.7;
+}
+
+/* 形式選択セクション */
+.selection-section {
+  padding: 1rem;
+}
+
+.selection-content h2 {
+  text-align: center;
+  color: var(--text-primary);
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+}
+
+.original-preview {
+  margin-bottom: 2rem;
+}
+
+.original-preview h3 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+}
+
+.format-selection {
+  background: var(--background);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--surface-light);
 }
 
 /* 処理中セクション */
