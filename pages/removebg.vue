@@ -112,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 
 useHead({
   title: '背景削除 - Pixel Studio',
@@ -128,6 +128,30 @@ const resultCanvas = ref(null)
 const originalImageUrl = ref('')
 const currentImageBlob = ref(null)
 let removeBackground = null
+
+// 結果セクションに切り替わった時にcanvasに画像を表示
+watch(currentSection, async (newSection) => {
+  if (newSection === 'result' && currentImageBlob.value) {
+    await nextTick()
+    displayResultOnCanvas()
+  }
+})
+
+async function displayResultOnCanvas() {
+  if (!resultCanvas.value || !currentImageBlob.value) return
+
+  const resultImg = new Image()
+  await new Promise((resolve) => {
+    resultImg.onload = resolve
+    resultImg.src = URL.createObjectURL(currentImageBlob.value)
+  })
+
+  const canvas = resultCanvas.value
+  canvas.width = resultImg.width
+  canvas.height = resultImg.height
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(resultImg, 0, 0)
+}
 
 // @imgly/background-removalをロード（クライアントサイドのみ）
 async function loadAIModel() {
@@ -251,13 +275,8 @@ async function processImage(file) {
 
     console.log('Image analysis:', analysis)
 
-    // 結果セクションに切り替えてからcanvasを使用
-    currentSection.value = 'result'
-
-    // DOMが更新されるのを待つ
-    await new Promise(resolve => setTimeout(resolve, 100))
-
     // 背景の複雑さに応じて処理方法を選択
+    // この間、processingセクションが表示される
     if (analysis.isSimpleBackground) {
       console.log('Using color-based removal (simple background)')
       await removeBackgroundColorBased(img)
@@ -265,6 +284,9 @@ async function processImage(file) {
       console.log('Using AI-based removal (complex background - @imgly)')
       await removeBackgroundAI(file, img)
     }
+
+    // 処理完了後に結果セクションに切り替え
+    currentSection.value = 'result'
 
   } catch (error) {
     console.error('Background removal failed:', error)
@@ -284,21 +306,19 @@ function loadImage(file) {
 
 // 色ベースの背景削除（図形用）
 async function removeBackgroundColorBased(img) {
-  const canvas = resultCanvas.value
-  if (!canvas) {
-    throw new Error('Canvas要素が見つかりません')
-  }
-  canvas.width = img.width
-  canvas.height = img.height
-  const ctx = canvas.getContext('2d')
+  // 一時的なcanvasで処理
+  const tempCanvas = document.createElement('canvas')
+  tempCanvas.width = img.width
+  tempCanvas.height = img.height
+  const ctx = tempCanvas.getContext('2d')
 
   ctx.drawImage(img, 0, 0)
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
   const pixels = imageData.data
 
-  const bgColor = detectBackgroundColor(imageData, canvas.width, canvas.height)
+  const bgColor = detectBackgroundColor(imageData, tempCanvas.width, tempCanvas.height)
   const threshold = 30 // より厳密な閾値で精度向上
-  const alphaMask = new Uint8ClampedArray(canvas.width * canvas.height)
+  const alphaMask = new Uint8ClampedArray(tempCanvas.width * tempCanvas.height)
 
   for (let i = 0; i < pixels.length / 4; i++) {
     const r = pixels[i * 4]
@@ -317,11 +337,11 @@ async function removeBackgroundColorBased(img) {
   // 多段階スムージング（パス数を増やして精度向上）
   let smoothedMask = alphaMask
   for (let pass = 0; pass < 5; pass++) {
-    smoothedMask = smoothMaskAdvanced(smoothedMask, canvas.width, canvas.height)
+    smoothedMask = smoothMaskAdvanced(smoothedMask, tempCanvas.width, tempCanvas.height)
   }
 
   // エッジフェザリングで自然な境界を作成
-  smoothedMask = applyFeathering(smoothedMask, canvas.width, canvas.height)
+  smoothedMask = applyFeathering(smoothedMask, tempCanvas.width, tempCanvas.height)
 
   for (let i = 0; i < pixels.length / 4; i++) {
     pixels[i * 4 + 3] = smoothedMask[i]
@@ -329,9 +349,13 @@ async function removeBackgroundColorBased(img) {
 
   ctx.putImageData(imageData, 0, 0)
 
-  canvas.toBlob((blob) => {
-    currentImageBlob.value = blob
-  }, 'image/png')
+  // Blobに変換して保存
+  await new Promise((resolve) => {
+    tempCanvas.toBlob((blob) => {
+      currentImageBlob.value = blob
+      resolve()
+    }, 'image/png')
+  })
 }
 
 // AIベースの背景削除（@imgly/background-removal）
@@ -341,22 +365,7 @@ async function removeBackgroundAI(file, img) {
   // @imgly/background-removalで処理
   const blob = await model(file)
 
-  // 結果をCanvasに描画
-  const resultImg = new Image()
-  await new Promise((resolve) => {
-    resultImg.onload = resolve
-    resultImg.src = URL.createObjectURL(blob)
-  })
-
-  const canvas = resultCanvas.value
-  if (!canvas) {
-    throw new Error('Canvas要素が見つかりません')
-  }
-  canvas.width = resultImg.width
-  canvas.height = resultImg.height
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(resultImg, 0, 0)
-
+  // Blobを保存（結果表示時に使用）
   currentImageBlob.value = blob
 }
 
