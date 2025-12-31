@@ -2,6 +2,7 @@
   "appId": "com.pixelstudio.app",
   "productName": "Pixel Studio",
   "copyright": "Copyright © 2024 Pixel Studio",
+  "publish": null,
   "directories": {
     "output": "dist-electron"
   },
@@ -14,59 +15,25 @@
     "category": "public.app-category.graphics-design",
     "target": [
       {
-        "target": "dmg",
-        "arch": ["x64", "arm64"]
-      },
-      {
         "target": "zip",
         "arch": ["x64", "arm64"]
       }
     ],
     "icon": "electron/build/icon.png",
-    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "darkModeSupport": true
-  },
-  "dmg": {
-    "contents": [
-      {
-        "x": 130,
-        "y": 220
-      },
-      {
-        "x": 410,
-        "y": 220,
-        "type": "link",
-        "path": "/Applications"
-      }
-    ],
-    "window": {
-      "width": 540,
-      "height": 380
-    }
   },
   "win": {
     "target": [
-      {
-        "target": "nsis",
-        "arch": ["x64"]
-      },
       {
         "target": "portable",
         "arch": ["x64"]
       }
     ],
     "icon": "electron/build/icon.png",
-    "artifactName": "${productName}-${version}-${arch}.${ext}"
-  },
-  "nsis": {
-    "oneClick": false,
-    "allowToChangeInstallationDirectory": true,
-    "createDesktopShortcut": true,
-    "createStartMenuShortcut": true,
-    "shortcutName": "Pixel Studio",
-    "license": "LICENSE"
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
   },
   "portable": {
-    "artifactName": "${productName}-${version}-${arch}-portable.${ext}"
+    "artifactName": "${productName}-${version}-${os}-${arch}-portable.${ext}"
   }
 }
