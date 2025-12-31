@@ -1,0 +1,81 @@
+name: Build Electron App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'claude/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+          - os: windows-latest
+            platform: win
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (macOS)
+        if: matrix.platform == 'mac'
+        run: |
+          rm -f package-lock.json
+          npm install
+
+      - name: Install dependencies (Windows)
+        if: matrix.platform == 'win'
+        run: |
+          if (Test-Path package-lock.json) { Remove-Item package-lock.json }
+          npm install
+        shell: pwsh
+
+      - name: Generate app icons
+        run: node scripts/generate-app-icons.mjs
+        continue-on-error: true
+
+      - name: Build Nuxt app
+        env:
+          ELECTRON: true
+        run: npm run build
+
+      - name: Build Electron app (macOS)
+        if: matrix.platform == 'mac'
+        run: npx electron-builder --mac --x64 --arm64
+
+      - name: Build Electron app (Windows)
+        if: matrix.platform == 'win'
+        run: npx electron-builder --win --x64
+
+      - name: Upload artifacts (macOS)
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-studio-macos-${{ github.sha }}
+          path: |
+            dist-electron/*.dmg
+            dist-electron/*.zip
+          retention-days: 30
+
+      - name: Upload artifacts (Windows)
+        if: matrix.platform == 'win'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-studio-windows-${{ github.sha }}
+          path: |
+            dist-electron/*.exe
+          retention-days: 30
