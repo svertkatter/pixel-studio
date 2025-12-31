@@ -19,16 +19,12 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            arch: x64
-            platform: mac
-          - os: macos-latest
-            arch: arm64
             platform: mac
           - os: windows-latest
-            arch: x64
             platform: win
 
     steps:
@@ -42,31 +38,34 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Generate app icons
         run: node scripts/generate-app-icons.mjs
+        continue-on-error: true
+
+      - name: Build Nuxt app
+        env:
+          ELECTRON: true
+        run: npm run build
 
       - name: Build Electron app (macOS)
         if: matrix.platform == 'mac'
         env:
-          ELECTRON: true
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npm run electron:build:mac -- --${{ matrix.arch }}
+        run: npx electron-builder --mac --x64 --arm64
 
       - name: Build Electron app (Windows)
         if: matrix.platform == 'win'
         env:
-          ELECTRON: true
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run electron:build:win
+        run: npx electron-builder --win --x64
 
       - name: Upload artifacts (macOS)
         if: matrix.platform == 'mac'
         uses: actions/upload-artifact@v4
         with:
-          name: pixel-studio-macos-${{ matrix.arch }}
+          name: pixel-studio-macos
           path: |
             dist-electron/*.dmg
             dist-electron/*.zip
@@ -76,10 +75,9 @@ jobs:
         if: matrix.platform == 'win'
         uses: actions/upload-artifact@v4
         with:
-          name: pixel-studio-windows-${{ matrix.arch }}
+          name: pixel-studio-windows
           path: |
             dist-electron/*.exe
-            dist-electron/*-portable.exe
           retention-days: 7
 
   release:
@@ -92,6 +90,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
