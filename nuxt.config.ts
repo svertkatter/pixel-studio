@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   app: {
-    baseURL: process.env.NODE_ENV === 'production' ? '/pixel-studio/' : '/',
+    baseURL: process.env.ELECTRON ? '/' : (process.env.NODE_ENV === 'production' ? '/pixel-studio/' : '/'),
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
