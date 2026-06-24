@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
+    "heic2any": "^0.0.4",
     "nuxt": "^3.14.159",
     "vue": "latest"
   },

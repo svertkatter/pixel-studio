@@ -22,7 +22,7 @@
             <div class="upload-icon">🔄</div>
             <h2>画像をアップロード</h2>
             <p>クリックまたはドラッグ&ドロップで画像を選択</p>
-            <p class="file-types">対応形式: PNG, JPEG, WebP, GIF, AVIF, BMP, TIFF など</p>
+            <p class="file-types">対応形式: PNG, JPEG, WebP, GIF, AVIF, BMP, TIFF, HEIC など</p>
             <input
               ref="fileInput"
               type="file"
@@ -218,7 +218,7 @@
         <div class="info-card">
           <h3>📁 対応形式</h3>
           <ul>
-            <li><strong>入力</strong>: PNG, JPEG, WebP, GIF, AVIF, BMP, TIFF, SVG など</li>
+            <li><strong>入力</strong>: PNG, JPEG, WebP, GIF, AVIF, BMP, TIFF, SVG, HEIC など</li>
             <li><strong>出力</strong>: JPEG, PNG, WebP, AVIF, GIF, BMP, ICO</li>
           </ul>
         </div>
@@ -239,6 +239,7 @@
         <div class="info-card">
           <h3>💡 使用例</h3>
           <ul>
+            <li><strong>iPhoneの写真を変換</strong>: HEIC → JPEG/PNG</li>
             <li><strong>Web用に最適化</strong>: PNG/JPEG → WebP/AVIF</li>
             <li><strong>透明PNGを作成</strong>: JPEG/WebP → PNG</li>
             <li><strong>ファビコン作成</strong>: PNG → ICO</li>
@@ -331,6 +332,13 @@ function handleDrop(event) {
 // 画像形式を検出
 function detectImageFormat(file) {
   const type = file.type
+  const name = file.name.toLowerCase()
+
+  // HEICはファイル名で判定（ブラウザがMIMEタイプを正しく認識しない場合がある）
+  if (name.endsWith('.heic') || name.endsWith('.heif')) {
+    return 'heic'
+  }
+
   const formatMap = {
     'image/jpeg': 'jpeg',
     'image/png': 'png',
@@ -342,9 +350,37 @@ function detectImageFormat(file) {
     'image/tiff': 'tiff',
     'image/svg+xml': 'svg',
     'image/x-icon': 'ico',
-    'image/vnd.microsoft.icon': 'ico'
+    'image/vnd.microsoft.icon': 'ico',
+    'image/heic': 'heic',
+    'image/heif': 'heic'
   }
   return formatMap[type] || 'unknown'
+}
+
+// HEIC画像を変換
+async function convertHEIC(file) {
+  if (!process.client) return file
+
+  try {
+    const heic2any = (await import('heic2any')).default
+
+    const convertedBlob = await heic2any({
+      blob: file,
+      toType: 'image/jpeg',
+      quality: 0.9
+    })
+
+    // 配列の場合は最初の要素を使用
+    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob
+
+    // Fileオブジェクトに変換
+    return new File([blob], file.name.replace(/\.heic$/i, '.jpg'), {
+      type: 'image/jpeg'
+    })
+  } catch (error) {
+    console.error('HEIC conversion failed:', error)
+    throw new Error('HEIC画像の変換に失敗しました。別の画像で試してください。')
+  }
 }
 
 // 画像処理
@@ -358,7 +394,13 @@ async function processImage(file) {
   originalFormat.value = detectImageFormat(file)
 
   try {
-    const imageData = await loadImage(file)
+    // HEICの場合は先に変換
+    let processedFile = file
+    if (originalFormat.value === 'heic') {
+      processedFile = await convertHEIC(file)
+    }
+
+    const imageData = await loadImage(processedFile)
     originalImageUrl.value = imageData
 
     const img = new Image()
